@@ -1,14 +1,17 @@
+
+
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Arrow, Check } from "./Icons";
 
-// Editorial event "poster" row: the date is the hero.
 function EventCard({ event }) {
-  const [going, setGoing] = useState(false); // UI state only; wire to the backend later.
+  const [going, setGoing] = useState(false);
   const [taken, total] = event.seats;
   const pct = Math.round((taken / total) * 100);
 
   return (
     <article className="ev" data-reveal>
+
       <time className="ev__date" dateTime={`${event.year}-${event.month}-${event.day}`}>
         <span className="ev__day">{event.day}</span>
         <span className="ev__month">{event.month}</span>
@@ -29,12 +32,20 @@ function EventCard({ event }) {
             </dd>
           </div>
         </dl>
-        <button type="button" className={`btn btn--sm ${going ? "btn--done" : "btn--ghost"}`} aria-pressed={going} onClick={() => setGoing(!going)}>
-          {going ? <><Check /> You're in</> : <>Join event <Arrow /></>}
-        </button>
+
+        {/* View Details → Link to detail page */}
+        <Link
+          to={`/events/${event.id}`}
+          className="btn btn--sm btn--ghost"
+        >
+          View Details <Arrow />
+        </Link>
       </div>
 
-      <div className="ev__thumb"><img src={event.src} alt={`${event.title} poster`} loading="lazy" /></div>
+      <Link to={`/events/${event.id}`} className="ev__thumb">
+        <img src={event.src} alt={`${event.title} poster`} loading="lazy" />
+      </Link>
+
     </article>
   );
 }

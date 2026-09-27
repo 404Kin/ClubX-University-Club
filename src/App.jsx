@@ -15,6 +15,8 @@ import EventsPage from "./pages/EventsPage";
 import IntroScreen from "./components/IntroScreen";
 import useReveal from "./hooks/useReveal";
 
+import EventDetail from "./pages/EventDetail";
+
 import "./App.css";
 import "./styles/home.css";
 
@@ -65,7 +67,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/clubs/:slug" element={<ClubDetails />} />
-        <Route path="/events" element={<EventsPage />} />   {/* ← NOTUN route */}
+        <Route path="/events" element={<EventsPage />} />  
+        <Route path="/events/:id" element={<EventDetail />} />
       </Routes>
     </BrowserRouter>
   );

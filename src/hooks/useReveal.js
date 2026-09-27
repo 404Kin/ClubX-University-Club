@@ -1,7 +1,5 @@
 import { useEffect } from "react";
 
-// Adds `.is-in` to [data-reveal] elements as they scroll into view.
-// Content stays visible without JS / with reduced motion (the hiding CSS is gated on html.js-reveal).
 export default function useReveal() {
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
