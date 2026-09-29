@@ -1,6 +1,4 @@
-// Discovery directory shown on the home page.
-// NOTE: only clubs that also exist in ./clubs.js have a full profile page.
-// The rest are SAMPLE entries so the discovery UI has something to show until a backend exists.
+
 import clubs from "./clubs";
 import gallery1 from "../assets/gallery1.jpg";
 import gallery2 from "../assets/gallery2.jpg";

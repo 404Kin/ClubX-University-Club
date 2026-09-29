@@ -33,7 +33,6 @@ function EventCard({ event }) {
           </div>
         </dl>
 
-        {/* View Details → Link to detail page */}
         <Link
           to={`/events/${event.id}`}
           className="btn btn--sm btn--ghost"

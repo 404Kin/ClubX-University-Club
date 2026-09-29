@@ -14,8 +14,13 @@ import ClubDetails from "./pages/ClubDetails";
 import EventsPage from "./pages/EventsPage";   
 import IntroScreen from "./components/IntroScreen";
 import useReveal from "./hooks/useReveal";
-
+ 
 import EventDetail from "./pages/EventDetail";
+import ChatBot from "./components/ChatBot";
+
+import StudentDashboard from "./pages/StudentDashboard";
+import ExecutiveDashboard from "./pages/ExecutiveDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 import "./App.css";
 import "./styles/home.css";
@@ -69,7 +74,11 @@ function App() {
         <Route path="/clubs/:slug" element={<ClubDetails />} />
         <Route path="/events" element={<EventsPage />} />  
         <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/dashboard/student" element={<StudentDashboard />} />
+        <Route path="/dashboard/executive" element={<ExecutiveDashboard />} />
+        <Route path="/dashboard/admin" element={<AdminDashboard />} />
       </Routes>
+      <ChatBot />
     </BrowserRouter>
   );
 }
