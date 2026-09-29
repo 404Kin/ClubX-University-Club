@@ -92,6 +92,8 @@ ClubX/
 
 **Fathema Tuj Johora** — Lecturer, Dept. of CSE
 
+🌐 **Live Demo:** [https://404kin.github.io/ClubX-University-Club/](https://404kin.github.io/ClubX-University-Club/)
+
 ##  License
 
 Academic project — not for commercial use.
