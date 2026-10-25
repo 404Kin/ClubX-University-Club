@@ -9,7 +9,7 @@ import clubs from "../data/clubs";
 import directory from "../data/directory";
 import "../styles/club.css";
 
-const TABS = ["Overview", "Announcements", "Members", "Requirements", "Achievements", "About"];
+const TABS = ["Overview", "About", "Benefits", "Announcements", "Achievements", "Executives", "Members", "Requirements", "Membership"];
 const tabId = (t) => t.toLowerCase();
 
 const initials = (name) => name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
@@ -122,6 +122,48 @@ function About({ about }) {
   );
 }
 
+function Benefits({ items }) {
+  return (
+    <ul className="cd-benefits">
+      {items.map((b) => (
+        <li key={b.title} className="cd-block">
+          <h3>{b.title}</h3>
+          <p>{b.desc}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Executives({ items }) {
+  return (
+    <ul className="cd-members">
+      {items.map((m, i) => (
+        <li key={`${m.name}-${i}`}>
+          <span className="cd-avatar" aria-hidden="true">{initials(m.name)}</span>
+          <div>
+            <strong>{m.position}</strong>
+            <span>{m.name} · {m.department} '{m.batch}</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Membership({ club, slug }) {
+  return (
+    <div className="cd-membership">
+      <p className="cd-lead">Become an official {club.short} member for ৳{club.membership.fee} per year.</p>
+      <Link to={`/clubs/${slug}/join`} className="btn btn--primary btn--lg">Become a Member <Arrow /></Link>
+      <p className="cd-membership__note">
+        Payment is made manually via bKash, Nagad or Rocket. After you submit your Transaction ID, the club
+        administrator verifies it before your membership is approved.
+      </p>
+    </div>
+  );
+}
+
 function NotAvailable({ slug }) {
   const entry = directory.find((c) => c.slug === slug);
   return (
@@ -171,15 +213,18 @@ function ClubDetails() {
         <div className="cd-hero__glow" aria-hidden="true" />
         <div className="wrap">
           <nav className="cd-crumbs" aria-label="Breadcrumb">
+            <Link to="/">Home</Link>
+            <span aria-hidden="true">/</span>
             <Link to={{ pathname: "/", hash: "#clubs" }}>Clubs</Link>
             <span aria-hidden="true">/</span>
             <span>{entry?.category ?? "Club"}</span>
           </nav>
+          <span className="cd-kicker">{entry?.category ?? "Club"} · Official Page</span>
           <h1 className="cd-title">{club.short}</h1>
           <p className="cd-name">{club.name}</p>
           <p className="cd-tagline">“{club.tagline}”</p>
           <div className="cd-actions">
-            <JoinClub club={club} />
+            <JoinClub club={club} slug={slug} />
             <Link to={{ pathname: "/", hash: "#events" }} className="btn btn--ghost btn--lg">Explore Events</Link>
           </div>
           <dl className="cd-stats">
@@ -224,6 +269,9 @@ function ClubDetails() {
         {tab === "Requirements" && <Requirements req={club.requirements} />}
         {tab === "Achievements" && <Achievements items={club.achievements} />}
         {tab === "About" && <About about={club.about} />}
+        {tab === "Benefits" && <Benefits items={club.benefits} />}
+        {tab === "Executives" && <Executives items={club.executives} />}
+        {tab === "Membership" && <Membership club={club} slug={slug} />}
       </main>
 
       <Footer />

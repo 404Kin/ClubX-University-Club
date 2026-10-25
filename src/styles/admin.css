@@ -1,0 +1,10 @@
+.admin-body { padding-block: calc(var(--nav-h) + 2.5rem) 4rem; }
+.admin-body h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); margin-bottom: 0.5rem; }
+.admin-note { color: var(--muted); margin-bottom: 2rem; max-width: 60ch; }
+.admin-empty { color: var(--muted); }
+
+.admin-list { display: flex; flex-direction: column; gap: 1.25rem; }
+.admin-card { border: 1px solid var(--line-strong); border-radius: 14px; padding: 1.25rem 1.5rem; }
+.admin-card__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
+.admin-card .cd-info div { padding: 0.5rem 0; }
+.admin-card__actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem; }
