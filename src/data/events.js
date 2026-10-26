@@ -116,3 +116,11 @@ export const events = [
 export const getEventById = (id) => events.find((e) => e.id === id);
 
 export default events;
+
+export const fetchEventsAPI = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(events);
+    }, 800); 
+  });
+};

@@ -138,3 +138,45 @@ export const mockRegisteredStudents = [
   { id: "C241492", name: "Nusrat Jahan", dept: "CSE", ticketId: "TXN-2025-4786" },
   { id: "C241505", name: "Rakib Hasan", dept: "EEE", ticketId: "TXN-2025-4787" },
 ];
+
+// =========================================
+// FAKE API FUNCTIONS (Simulating Network Calls)
+// =========================================
+
+export const fetchStudentDashboardData = (email) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        ...mockStudent,
+        email: email || mockStudent.email,
+      });
+    }, 500); // 0.5 second delay
+  });
+};
+
+export const fetchExecutiveDashboardData = (email) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        pendingMembers: mockExecutive.pendingMembers,
+        events: mockExecutive.events,
+        announcements: mockExecutive.announcements,
+        stats: mockExecutive.stats,
+        registeredStudents: mockRegisteredStudents,
+      });
+    }, 500);
+  });
+};
+
+export const fetchAdminDashboardData = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        clubs: mockAdmin.clubs,
+        stats: mockAdmin.stats,
+        userStats: mockAdmin.userStats,
+        announcements: mockAdmin.announcements,
+      });
+    }, 500);
+  });
+};

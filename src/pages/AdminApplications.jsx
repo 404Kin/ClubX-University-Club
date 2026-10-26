@@ -5,9 +5,6 @@ import StatusBadge from "../components/StatusBadge";
 import { STATUS, getApplications, updateApplicationStatus } from "../data/memberships";
 import "../styles/admin.css";
 
-// Minimal, frontend-only membership review screen.
-// NOTE: not gated by any auth/role check — there is no auth system yet.
-// Wire this behind a real admin login before shipping to production.
 function AdminApplications() {
   const [apps, setApps] = useState(() => getApplications());
 
