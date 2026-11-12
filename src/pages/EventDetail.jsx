@@ -13,6 +13,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { apiUrl } from "../lib/api";
 
 function EventDetail() {
   const { id } = useParams();
@@ -22,6 +23,7 @@ function EventDetail() {
 
   const [showForm, setShowForm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [registrationError, setRegistrationError] = useState("");
   const [form, setForm] = useState({
     name: "",
     studentId: "",
@@ -40,7 +42,7 @@ function EventDetail() {
 
     const fetchEvent = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/events/${id}`);
+        const response = await fetch(apiUrl(`events/${id}`));
         if (response.ok) {
           const data = await response.json();
           setEvent(data);
@@ -73,31 +75,43 @@ function EventDetail() {
   const taken = event.registered || 0;
   const total = event.total || 50;
   const pct = Math.round((taken / total) * 100);
-  const isPaid = false; 
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const ticketId = `TXN-2025-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const existing = JSON.parse(localStorage.getItem("clubx_registrations") || "[]");
-    const newRegistration = {
-      ticketId,
+    const ticketId = `CLUBX-${crypto.randomUUID()}`;
+
+    const payload = {
       eventId: event._id,
-      eventTitle: event.title,
-      eventClub: "Club", 
-      eventDate: event.date,
-      eventTime: event.time,
-      eventPlace: event.venue,
-      registeredAt: new Date().toISOString(),
-      ...form,
+      ticketId,
+      studentName: form.name,
+      studentId: form.studentId,
+      email: form.email,
+      department: form.department,
+      phone: form.phone
     };
-    localStorage.setItem("clubx_registrations", JSON.stringify([...existing, newRegistration]));
 
-    setForm({ ...form, ticketId });
-    setSubmitted(true);
+    try {
+      const res = await fetch(apiUrl("event-registrations"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setForm({ ...form, ticketId });
+        setSubmitted(true);
+      } else {
+        const data = await res.json();
+        setRegistrationError(data.message || data.error || "Failed to register. Please try again.");
+      }
+    } catch (err) {
+      console.error(err);
+      setRegistrationError("Could not reach the registration service. Please try again.");
+    }
   };
 
   const handleDownload = async () => {
@@ -155,9 +169,11 @@ function EventDetail() {
                   <div className="reg-card-top">
                     <div>
                       <span className="reg-label">Registration Fee</span>
-                      <h3 className="reg-fee">Free</h3>
+                      <h3 className="reg-fee">{event.isPaid ? `৳${Number(event.price || 0).toLocaleString()}` : "Free"}</h3>
                     </div>
-                    <span className="reg-status free">Free</span>
+                    <span className={`reg-status ${event.isPaid ? "paid" : "free"}`}>
+                      {event.isPaid ? "Paid" : "Free"}
+                    </span>
                   </div>
 
                   <div className="reg-info">
@@ -175,8 +191,8 @@ function EventDetail() {
                   </div>
 
                   {!showForm && (
-                    <button className="reg-btn" onClick={() => setShowForm(true)}>
-                      Register for this event
+                    <button className="reg-btn" onClick={() => setShowForm(true)} disabled={taken >= total}>
+                      {taken >= total ? "Event is full" : "Register for this event"}
                     </button>
                   )}
                 </div>
@@ -193,6 +209,19 @@ function EventDetail() {
                     <label>Student ID *</label>
                     <input type="text" name="studentId" value={form.studentId} onChange={handleChange} required placeholder="C241462" />
                   </div>
+                  <div className="form-group">
+                    <label>Email *</label>
+                    <input type="email" name="email" value={form.email} onChange={handleChange} required placeholder="you@example.com" />
+                  </div>
+                  <div className="form-group">
+                    <label>Department</label>
+                    <input type="text" name="department" value={form.department} onChange={handleChange} placeholder="e.g. CSE" />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone</label>
+                    <input type="tel" name="phone" value={form.phone} onChange={handleChange} placeholder="01XXXXXXXXX" />
+                  </div>
+                  {registrationError && <p role="alert">{registrationError}</p>}
                   <div className="form-actions">
                     <button type="button" className="btn-cancel" onClick={() => setShowForm(false)}>Cancel</button>
                     <button type="submit" className="btn-submit">Confirm Registration</button>

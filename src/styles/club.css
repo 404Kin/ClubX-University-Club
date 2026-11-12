@@ -13,6 +13,7 @@
 .club-page .link-btn { color: var(--accent); }
 
 .cd-hero { position: relative; padding: calc(var(--nav-h) + clamp(2rem, 6vw, 4rem)) 0 clamp(2.5rem, 6vw, 4rem); overflow: hidden; isolation: isolate; border-bottom: 1px solid hsl(var(--hue) 60% 60% / 0.25); }
+.cd-hero__image { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; opacity: 0.24; }
 .cd-hero__glow { position: absolute; inset: -20% -10% auto auto; width: 60vw; height: 60vw; max-width: 800px; max-height: 800px; border-radius: 50%; background: radial-gradient(circle, hsl(var(--hue) 80% 55% / 0.32), transparent 65%); z-index: -1; }
 .cd-crumbs { display: flex; align-items: center; gap: 0.6rem; font-size: 0.82rem; color: var(--muted); margin-bottom: 1.5rem; }
 .cd-crumbs a:hover { color: var(--accent); }
@@ -92,6 +93,8 @@
 .cd-missing .eyebrow { color: var(--accent); margin: 0; }
 .cd-missing h1 { font-size: clamp(2.5rem, 8vw, 5.5rem); }
 .cd-missing p { color: var(--muted); max-width: 42ch; margin-bottom: 0.75rem; }
+.cd-loading { min-height: 60svh; display: grid; place-items: center; padding-top: var(--nav-h); color: var(--muted); }
+.cd-empty-note { color: var(--muted); padding: 1rem 0; border-top: 1px solid var(--line); }
 
 @media (max-width: 860px) {
   .cd-cols { grid-template-columns: 1fr; }

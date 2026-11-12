@@ -27,6 +27,7 @@ function EventCard({ event }) {
         <dl className="ev__meta">
           <div><dt>Time</dt><dd>{event.time}</dd></div>
           <div><dt>Location</dt><dd>{event.venue}</dd></div>
+          <div><dt>Fee</dt><dd>{event.isPaid ? `৳${Number(event.price || 0).toLocaleString()}` : "Free"}</dd></div>
           <div>
             <dt>Seats</dt>
             <dd>
@@ -48,7 +49,7 @@ function EventCard({ event }) {
 
       <Link to={`/events/${event._id}`} className="ev__thumb">
         <img 
-          src={event.src || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600"} 
+          src={event.src || "https://i.pinimg.com/736x/f0/aa/32/f0aa32a3d14e85c928f18db8fd071ba3.jpg"}
           alt={`${event.title} poster`} 
           loading="lazy" 
         />

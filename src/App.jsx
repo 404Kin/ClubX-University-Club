@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import ClubDiscovery from "./components/ClubDiscovery";
-import CampusPulse from "./components/CampusPulse";
 import Announcements from "./components/Announcements";
 import Mission from "./components/Mission";
 import Gallery from "./components/Gallery";
@@ -12,6 +11,8 @@ import Footer from "./components/Footer";
 import Login from "./components/Login";
 import ClubDetails from "./pages/ClubDetails";
 import ClubJoin from "./pages/ClubJoin";
+import AnnouncementDetail from "./pages/AnnouncementDetail";
+import AnnouncementsPage from "./pages/AnnouncementsPage";
 import AdminApplications from "./pages/AdminApplications";
 import EventsPage from "./pages/EventsPage";
 import IntroScreen from "./components/IntroScreen";
@@ -35,7 +36,6 @@ function Home() {
       <main>
         <Hero />
         <ClubDiscovery />
-        <CampusPulse />
         <Announcements />
         <Mission />
         <Gallery />
@@ -67,7 +67,7 @@ function ScrollManager() {
 
 function App() {
   return (
-    <BrowserRouter basename="/ClubX-University-Club/">
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <IntroScreen />
       <ScrollManager />
       <Routes>
@@ -77,6 +77,8 @@ function App() {
         
         {/* Fabiya's Routes */}
         <Route path="/clubs/:slug/join" element={<ClubJoin />} />
+        <Route path="/announcements/:id" element={<AnnouncementDetail />} />
+        <Route path="/announcements" element={<AnnouncementsPage />} />
         <Route path="/admin/applications" element={<AdminApplications />} />
         
         {/* Events Routes */}

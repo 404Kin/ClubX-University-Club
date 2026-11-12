@@ -2,34 +2,56 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { FaSignOutAlt, FaArrowRight, FaBookOpen, FaCalendarAlt } from "react-icons/fa";
+import StatusBadge from "../components/StatusBadge";
+import { apiUrl } from "../lib/api";
+import { FaSignOutAlt, FaArrowRight, FaCalendarAlt } from "react-icons/fa";
 
 function StudentDashboard() {
-  const [user, setUser] = useState(null);
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("clubx_user") || "null");
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState([]);
+  const [memberships, setMemberships] = useState([]);
+  const [dashboardError, setDashboardError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    const stored = localStorage.getItem("clubx_user");
-    if (!stored) { navigate("/login"); return; }
-    const parsed = JSON.parse(stored);
-    if (parsed.role !== "student") { navigate("/login"); return; }
-    setUser(parsed);
+    if (!user || user.role !== "student") { navigate("/login"); return; }
 
     const loadData = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/events");
-        const data = await res.json();
-        setEvents(data);
-        setLoading(false);
+        const headers = { Authorization: `Bearer ${localStorage.getItem("clubx_token") || ""}` };
+        const [eventsResponse, membershipsResponse] = await Promise.all([
+          fetch(apiUrl("events")),
+          fetch(apiUrl("memberships/mine"), { headers }),
+        ]);
+        if (!eventsResponse.ok || !membershipsResponse.ok) {
+          throw new Error("Could not load your dashboard data.");
+        }
+        const [eventData, membershipData] = await Promise.all([
+          eventsResponse.json(),
+          membershipsResponse.json(),
+        ]);
+        if (!Array.isArray(eventData) || !Array.isArray(membershipData)) {
+          throw new Error("Dashboard API returned invalid data.");
+        }
+        setEvents(eventData);
+        setMemberships(membershipData);
+        setDashboardError("");
       } catch (err) {
         console.error(err);
+        setDashboardError(err.message || "Could not load your dashboard data.");
+      } finally {
         setLoading(false);
       }
     };
     loadData();
-  }, [navigate]);
+  }, [navigate, user]);
 
   const handleLogout = () => {
     localStorage.removeItem("clubx_user");
@@ -67,6 +89,7 @@ function StudentDashboard() {
 
             <ul className="ldg-stats">
               <li><FaCalendarAlt /> <strong>{events.length}</strong> total events live</li>
+              <li><FaCalendarAlt /> <strong>{memberships.filter((item) => item.status === "Approved").length}</strong> clubs joined</li>
             </ul>
 
             <div className="ldg-quick">
@@ -82,6 +105,27 @@ function StudentDashboard() {
           </aside>
 
           <div className="ldg-main">
+            {dashboardError && <p role="alert">{dashboardError}</p>}
+            <section>
+              <div className="ldg-section__head">
+                <h2>My clubs</h2>
+                <Link to="/" className="link-btn">Discover clubs <FaArrowRight className="icon-arrow" /></Link>
+              </div>
+              {memberships.length ? (
+                <ul className="ldg-rows">
+                  {memberships.map((membership) => (
+                    <li key={membership._id}>
+                      <span className="ldg-mark">{membership.clubName.slice(0, 2).toUpperCase()}</span>
+                      <div className="ldg-row-body">
+                        <strong><Link to={`/clubs/${membership.clubId}`}>{membership.clubName}</Link></strong>
+                        <small>{membership.createdAt ? `Applied ${new Date(membership.createdAt).toLocaleDateString()}` : "Membership application"}</small>
+                      </div>
+                      <StatusBadge status={membership.status} />
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="ldg-empty">You have not applied to join a club yet.</p>}
+            </section>
             <section>
               <div className="ldg-section__head">
                 <h2>Upcoming events (from Database)</h2>

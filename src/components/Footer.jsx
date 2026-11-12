@@ -1,8 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Arrow } from "./Icons";
 
-const SECTIONS = ["clubs", "announcements"];
-
 function Footer() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -44,9 +42,7 @@ function Footer() {
         <nav aria-label="Footer">
           <a href="#clubs" onClick={(e) => goToSection(e, "clubs")}>Clubs</a>
           <Link to="/events">Events</Link>
-          <a href="#announcements" onClick={(e) => goToSection(e, "announcements")}>
-            Announcements
-          </a>
+          <Link to="/announcements">Announcements</Link>
           <Link to="/login">Log in</Link>
         </nav>
 

@@ -71,13 +71,15 @@
 
 /* ---------- Campus pulse ---------- */
 .pulse { position: relative; }
+.announcements-page { min-height: 70vh; padding-top: var(--nav-h); }
 .pulse__feed { border-top: 1px solid var(--line); }
 .pulse__feed li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.25rem; padding: 1.35rem 0; border-bottom: 1px solid var(--line); transition: background 0.3s, padding 0.3s var(--ease); }
 .pulse__feed li:hover { padding-left: 0.75rem; background: linear-gradient(90deg, hsl(var(--hue) 70% 50% / 0.08), transparent); }
 .pulse__dot { width: 9px; height: 9px; border-radius: 50%; background: hsl(var(--hue) 90% 65%); box-shadow: 0 0 0 0 hsl(var(--hue) 90% 65% / 0.5); animation: pulse-dot 2.4s infinite; }
 @keyframes pulse-dot { 70%, 100% { box-shadow: 0 0 0 9px transparent; } }
-.pulse__feed p { font-size: clamp(1.05rem, 2.4vw, 1.5rem); font-family: var(--font-display); letter-spacing: -0.01em; color: var(--muted); }
-.pulse__feed strong { color: var(--text); font-weight: 600; }
+.pulse__link { display: block; font-size: clamp(1.05rem, 2.4vw, 1.5rem); font-family: var(--font-display); letter-spacing: -0.01em; color: var(--muted); }
+.pulse__link:hover { color: var(--text); }
+.pulse__link strong { color: var(--text); font-weight: 600; }
 .pulse__kind { font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.3rem 0.7rem; border: 1px solid hsl(var(--hue) 70% 60% / 0.4); color: hsl(var(--hue) 90% 80%); border-radius: 999px; white-space: nowrap; }
 @media (max-width: 640px) {
   .pulse__feed li { grid-template-columns: auto 1fr; }

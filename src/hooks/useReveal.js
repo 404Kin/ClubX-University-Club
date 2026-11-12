@@ -16,8 +16,22 @@ export default function useReveal() {
         }),
       { rootMargin: "0px 0px -8% 0px", threshold: 0.05 }
     );
+    const observeRevealElements = (node) => {
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      if (node.matches("[data-reveal]")) io.observe(node);
+      node.querySelectorAll("[data-reveal]").forEach((el) => io.observe(el));
+    };
     document.querySelectorAll("[data-reveal]").forEach((el) => io.observe(el));
+
+    const mutations = new MutationObserver((records) => {
+      records.forEach((record) => {
+        record.addedNodes.forEach(observeRevealElements);
+      });
+    });
+    mutations.observe(document.body, { childList: true, subtree: true });
+
     return () => {
+      mutations.disconnect();
       io.disconnect();
       root.classList.remove("js-reveal");
     };

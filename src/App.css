@@ -511,6 +511,25 @@
   white-space: nowrap;
 }
 
+.admin-executives {
+  display: flex;
+  flex: 0 0 100%;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-left: 3.25rem;
+}
+
+.admin-executives > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.45rem 0.3rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
 /* event rows — ticket-stub styling */
 .ldg-events {
   list-style: none;

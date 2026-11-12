@@ -1,16 +1,15 @@
-import { STATUS } from "../data/memberships";
-
-const VARIANT = {
-  [STATUS.PENDING]: "pending",
-  [STATUS.VERIFIED]: "verified",
-  [STATUS.APPROVED]: "approved",
-  [STATUS.REJECTED]: "rejected",
-  [STATUS.FAILED]: "failed",
-};
-
 function StatusBadge({ status }) {
-  const variant = VARIANT[status] ?? "pending";
-  return <span className={`status-badge status-badge--${variant}`}>{status}</span>;
+  if (!status) return null;
+
+  const normalized = status.toLowerCase();
+
+  let badgeClass = "status-badge ";
+  if (normalized.includes("pending")) badgeClass += "pending";
+  else if (normalized.includes("approved")) badgeClass += "approved";
+  else if (normalized.includes("rejected")) badgeClass += "rejected";
+  else badgeClass += "default";
+
+  return <span className={badgeClass}>{status}</span>;
 }
 
 export default StatusBadge;

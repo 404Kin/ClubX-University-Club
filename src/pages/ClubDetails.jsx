@@ -1,56 +1,126 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import JoinClub from "../components/JoinClub";
-import AnnouncementRow from "../components/AnnouncementRow";
 import { Arrow } from "../components/Icons";
-import clubs from "../data/clubs";
-import directory from "../data/directory";
+import { apiUrl } from "../lib/api";
+import { getClubHue } from "../lib/clubPresentation";
 import "../styles/club.css";
 
-const TABS = ["Overview", "About", "Benefits", "Announcements", "Achievements", "Executives", "Members", "Requirements", "Membership"];
-const tabId = (t) => t.toLowerCase();
-
-const initials = (name) => name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+const TABS = [
+  "Overview",
+  "About",
+  "Benefits",
+  "Announcements",
+  "Achievements",
+  "Executives",
+  "Members",
+  "Requirements",
+  "Membership",
+];
+const tabId = (tab) => tab.toLowerCase();
+const asArray = (value) => Array.isArray(value) ? value : [];
+const initials = (name = "") =>
+  name.split(" ").filter(Boolean).map((word) => word[0]).slice(0, 2).join("").toUpperCase();
 
 function List({ title, items }) {
+  const entries = asArray(items).filter(Boolean);
   return (
     <section className="cd-block">
       <h3>{title}</h3>
-      <ul className="cd-list">{items.map((i) => <li key={i}>{i}</li>)}</ul>
+      {entries.length ? (
+        <ul className="cd-list">{entries.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
+      ) : (
+        <p>Information has not been published yet.</p>
+      )}
     </section>
   );
 }
 
 function InfoList({ items }) {
+  const entries = asArray(items).filter((item) => item?.label && item?.value);
+  if (!entries.length) return <p className="cd-empty-note">Club information has not been published yet.</p>;
   return (
     <dl className="cd-info">
-      {items.map((i) => (
-        <div key={i.label}>
-          <dt>{i.label}</dt>
-          <dd>{i.href ? <a href={i.href} target="_blank" rel="noreferrer">{i.value}</a> : i.value}</dd>
+      {entries.map((item, index) => (
+        <div key={`${item.label}-${index}`}>
+          <dt>{item.label}</dt>
+          <dd>
+            {item.href
+              ? <a href={item.href} target="_blank" rel="noreferrer">{item.value}</a>
+              : item.value}
+          </dd>
         </div>
       ))}
     </dl>
   );
 }
 
-function Overview({ club, announcements, goTo }) {
+function ClubAnnouncement({ item, lead = false }) {
+  const [open, setOpen] = useState(false);
+  const date = item.date || item.createdAt;
+  const description = item.desc || item.body;
+  const formattedDate = date && !Number.isNaN(new Date(date).valueOf())
+    ? new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+    : null;
+
+  const content = (
+    <article className={`ann ${lead ? "ann--lead" : ""}`}>
+      <div className="ann__top">
+        {lead && <span className="ann__badge">Latest</span>}
+        <span className="ann__club">{item.club || item.clubName || "Club announcement"}</span>
+        {formattedDate && <time dateTime={new Date(date).toISOString()}>{formattedDate}</time>}
+      </div>
+      <h3>{item._id ? <Link to={`/announcements/${item._id}`}>{item.title}</Link> : item.title}</h3>
+      {description && <p>{description}</p>}
+      {open && item.more && <p className="ann__more">{item.more}</p>}
+      {item.more && (
+        <button type="button" className="link-btn" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? "Show less" : "Read more"} <span aria-hidden="true">{open ? "−" : "→"}</span>
+        </button>
+      )}
+    </article>
+  );
+  return content;
+}
+
+function EmptyState({ children = "Information has not been published yet." }) {
+  return <p className="cd-empty-note">{children}</p>;
+}
+
+function Overview({ club, announcements, announcementError, goTo }) {
+  const info = asArray(club.info);
+  const defaultInfo = [
+    { label: "Category", value: club.category },
+    ...(club.executive ? [{ label: "Executive", value: club.executive }] : []),
+  ];
   return (
     <>
-      <p className="cd-lead">{club.description}</p>
+      <p className="cd-lead">{club.description || "This club has not added an overview yet."}</p>
       <div className="cd-cols">
         <section>
           <h3 className="cd-h">Club information</h3>
-          <InfoList items={club.info} />
+          <InfoList items={info.length ? info : defaultInfo} />
         </section>
         <section>
           <h3 className="cd-h">Latest announcements</h3>
-          <div className="ann-list">
-            {announcements.slice(0, 2).map((a, i) => <AnnouncementRow key={a.title} item={a} lead={i === 0} />)}
-          </div>
-          <button type="button" className="link-btn" onClick={() => goTo("Announcements")}>View all <Arrow size={14} /></button>
+          {announcementError ? (
+            <p role="alert">{announcementError}</p>
+          ) : announcements.length ? (
+            <div className="ann-list">
+              {announcements.slice(0, 2).map((item, index) => (
+                <ClubAnnouncement key={item._id || `${item.title}-${index}`} item={item} lead={index === 0} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No announcements have been posted for this club yet.</EmptyState>
+          )}
+          {announcements.length > 2 && (
+            <button type="button" className="link-btn" onClick={() => goTo("Announcements")}>
+              View all <Arrow size={14} />
+            </button>
+          )}
         </section>
       </div>
     </>
@@ -58,14 +128,16 @@ function Overview({ club, announcements, goTo }) {
 }
 
 function Members({ members }) {
+  const entries = asArray(members);
+  if (!entries.length) return <EmptyState>Member profiles have not been published by this club.</EmptyState>;
   return (
     <ul className="cd-members">
-      {members.map((m) => (
-        <li key={m.name}>
-          <span className="cd-avatar" aria-hidden="true">{initials(m.name)}</span>
+      {entries.map((member, index) => (
+        <li key={`${member.name || "member"}-${index}`}>
+          <span className="cd-avatar" aria-hidden="true">{initials(member.name)}</span>
           <div>
-            <strong>{m.name}</strong>
-            <span>{m.role} · {m.dept}</span>
+            <strong>{member.name}</strong>
+            <span>{[member.role, member.dept || member.department].filter(Boolean).join(" · ")}</span>
           </div>
         </li>
       ))}
@@ -73,62 +145,80 @@ function Members({ members }) {
   );
 }
 
-function Requirements({ req }) {
+function Requirements({ requirements = {} }) {
+  const joining = asArray(requirements.joining);
   return (
     <div className="cd-cols">
       <section>
         <h3 className="cd-h">How to join</h3>
-        <ol className="cd-steps">
-          {req.joining.map((s, i) => (
-            <li key={s}><span>{String(i + 1).padStart(2, "0")}</span>{s}</li>
-          ))}
-        </ol>
+        {joining.length ? (
+          <ol className="cd-steps">
+            {joining.map((step, index) => (
+              <li key={`${step}-${index}`}><span>{String(index + 1).padStart(2, "0")}</span>{step}</li>
+            ))}
+          </ol>
+        ) : (
+          <EmptyState>Joining instructions have not been published yet.</EmptyState>
+        )}
       </section>
       <div className="cd-stack">
-        <List title="Who can join" items={req.who} />
-        <List title="Eligibility" items={req.eligibility} />
-        <List title="Conditions" items={req.conditions} />
+        <List title="Who can join" items={requirements.who} />
+        <List title="Eligibility" items={requirements.eligibility} />
+        <List title="Conditions" items={requirements.conditions} />
       </div>
     </div>
   );
 }
 
 function Achievements({ items }) {
+  const entries = asArray(items);
+  if (!entries.length) return <EmptyState>Club achievements have not been published yet.</EmptyState>;
   return (
     <ol className="cd-timeline">
-      {items.map((a) => (
-        <li key={a.title}>
-          <span className="cd-year">{a.year}</span>
-          <div><h3>{a.title}</h3><p>{a.desc}</p></div>
+      {entries.map((item, index) => (
+        <li key={`${item.title || "achievement"}-${index}`}>
+          <span className="cd-year">{item.year}</span>
+          <div><h3>{item.title}</h3><p>{item.desc || item.description}</p></div>
         </li>
       ))}
     </ol>
   );
 }
 
-function About({ about }) {
+function About({ about = {}, club }) {
   return (
     <>
-      <p className="cd-lead">{about.history}</p>
+      <p className="cd-lead">{about.history || club.description || "Club history has not been published yet."}</p>
       <div className="cd-cols">
-        <section className="cd-block"><h3>Mission</h3><p>{about.mission}</p></section>
-        <section className="cd-block"><h3>Vision</h3><p>{about.vision}</p></section>
+        <section className="cd-block">
+          <h3>Mission</h3>
+          {about.mission ? <p>{about.mission}</p> : <EmptyState />}
+        </section>
+        <section className="cd-block">
+          <h3>Vision</h3>
+          {about.vision ? <p>{about.vision}</p> : <EmptyState />}
+        </section>
       </div>
       <div className="cd-cols">
         <List title="Activities" items={about.activities} />
-        <section className="cd-block"><h3>Contact</h3><InfoList items={about.contact} /></section>
+        <section className="cd-block">
+          <h3>Contact</h3>
+          <InfoList items={about.contact} />
+        </section>
       </div>
     </>
   );
 }
 
 function Benefits({ items }) {
+  const entries = asArray(items);
+  if (!entries.length) return <EmptyState>Membership benefits have not been published yet.</EmptyState>;
   return (
     <ul className="cd-benefits">
-      {items.map((b) => (
-        <li key={b.title} className="cd-block">
-          <h3>{b.title}</h3>
-          <p>{b.desc}</p>
+      {entries.map((benefit, index) => (
+        <li key={`${benefit.title || "benefit"}-${index}`} className="cd-block">
+          <h3>{benefit.title}</h3>
+          <p>{benefit.desc || benefit.description}</p>
         </li>
       ))}
     </ul>
@@ -136,14 +226,16 @@ function Benefits({ items }) {
 }
 
 function Executives({ items }) {
+  const entries = asArray(items);
+  if (!entries.length) return <EmptyState>Executive profiles have not been published yet.</EmptyState>;
   return (
     <ul className="cd-members">
-      {items.map((m, i) => (
-        <li key={`${m.name}-${i}`}>
-          <span className="cd-avatar" aria-hidden="true">{initials(m.name)}</span>
+      {entries.map((member, index) => (
+        <li key={`${member.name || "executive"}-${index}`}>
+          <span className="cd-avatar" aria-hidden="true">{initials(member.name)}</span>
           <div>
-            <strong>{m.position}</strong>
-            <span>{m.name} · {m.department} '{m.batch}</span>
+            <strong>{member.position}</strong>
+            <span>{[member.name, member.department, member.batch && `Batch ${member.batch}`].filter(Boolean).join(" · ")}</span>
           </div>
         </li>
       ))}
@@ -152,84 +244,183 @@ function Executives({ items }) {
 }
 
 function Membership({ club, slug }) {
+  const fee = club.membership?.fee;
   return (
     <div className="cd-membership">
-      <p className="cd-lead">Become an official {club.short} member for ৳{club.membership.fee} per year.</p>
-      <Link to={`/clubs/${slug}/join`} className="btn btn--primary btn--lg">Become a Member <Arrow /></Link>
-      <p className="cd-membership__note">
-        Payment is made manually via bKash, Nagad or Rocket. After you submit your Transaction ID, the club
-        administrator verifies it before your membership is approved.
+      <p className="cd-lead">
+        {fee === undefined
+          ? `Become a member of ${club.short || club.name}.`
+          : `Become a member of ${club.short || club.name} for ৳${fee}${club.membership.period ? ` per ${club.membership.period}` : ""}.`}
       </p>
-    </div>
-  );
-}
-
-function NotAvailable({ slug }) {
-  const entry = directory.find((c) => c.slug === slug);
-  return (
-    <div className="club-page">
-      <Navbar />
-      <main className="wrap cd-missing" style={{ "--hue": entry?.hue ?? 222 }}>
-        <span className="eyebrow">{entry ? entry.category : "404"}</span>
-        <h1>{entry ? entry.name : "Club not found"}</h1>
-        <p>
-          {entry
-            ? `${entry.tagline}. The official ${entry.short} page is coming soon.`
-            : "This club page isn't available."}
-        </p>
-        <Link to={{ pathname: "/", hash: "#clubs" }} className="btn btn--ghost">← Back to all clubs</Link>
-      </main>
-      <Footer />
+      <JoinClub club={club} slug={slug} />
+      <p className="cd-membership__note">
+        Confirm current membership requirements and fees with the official club executive.
+        ClubX does not collect or verify payments.
+      </p>
     </div>
   );
 }
 
 function ClubDetails() {
   const { slug } = useParams();
-  const club = clubs[slug];
+  const [club, setClub] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
+  const [approvedMembers, setApprovedMembers] = useState([]);
+  const [announcementError, setAnnouncementError] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("Overview");
   const tabRefs = useRef({});
 
-  if (!club) return <NotAvailable slug={slug} />;
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const fetchClub = async () => {
+      setLoading(true);
+      setError("");
+      setAnnouncementError("");
+      setClub(null);
+      setAnnouncements([]);
+      try {
+        const query = new URLSearchParams({ clubId: slug });
+        const announcementRequest = fetch(apiUrl(`announcements?${query}`), { signal: controller.signal })
+          .then(async (announcementResponse) => {
+            if (!announcementResponse.ok) {
+              throw new Error(`Could not load club announcements (${announcementResponse.status}).`);
+            }
+            const records = await announcementResponse.json();
+            if (!Array.isArray(records)) throw new Error("Announcement API returned an invalid response.");
+            return { records };
+          })
+          .catch((announcementError) => ({ announcementError }));
+        const response = await fetch(apiUrl(`clubs/${slug}`), { signal: controller.signal });
+        if (!response.ok) {
+          if (response.status === 404) throw new Error("Club not found.");
+          throw new Error(`Could not load this club (${response.status}).`);
+        }
+        const clubData = await response.json();
+        if (!active) return;
+        setClub(clubData);
+        setLoading(false);
+        fetch(apiUrl(`memberships/club/${slug}/members`), { signal: controller.signal })
+          .then(async (membersResponse) => {
+            if (!membersResponse.ok) throw new Error("Could not load approved club members.");
+            const memberData = await membersResponse.json();
+            if (!Array.isArray(memberData)) throw new Error("Membership API returned an invalid response.");
+            if (active) setApprovedMembers(memberData.map((member) => ({
+              name: member.studentName,
+              department: member.department,
+              role: "Member",
+            })));
+          })
+          .catch((membersError) => {
+            if (membersError.name !== "AbortError") console.error(membersError);
+          });
 
-  const entry = directory.find((c) => c.slug === slug);
-  const announcements = club.announcements.map((a) => ({ ...a, club: club.short }));
+        announcementRequest.then(({ records, announcementError }) => {
+          if (announcementError) throw announcementError;
+          if (active) {
+            const embedded = asArray(clubData.announcements);
+            setAnnouncements(records.length ? records : embedded.map((item) => ({
+              ...item,
+              club: clubData.short || clubData.name,
+            })));
+          }
+        }).catch((announcementFetchError) => {
+          if (announcementFetchError.name === "AbortError") return;
+          if (active) {
+            console.error(announcementFetchError);
+            const embedded = asArray(clubData.announcements);
+            if (embedded.length) {
+              setAnnouncements(embedded.map((item) => ({ ...item, club: clubData.short || clubData.name })));
+            } else {
+              setAnnouncementError(announcementFetchError.message || "Could not load club announcements.");
+            }
+          }
+        });
+      } catch (fetchError) {
+        if (fetchError.name === "AbortError") return;
+        if (active) setError(fetchError.message || "Could not load this club.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchClub();
+    return () => { active = false; controller.abort(); };
+  }, [slug]);
 
-  const onKeyDown = (e) => {
-    const i = TABS.indexOf(tab);
-    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: TABS.length - 1 }[e.key];
-    if (next === undefined) return;
-    e.preventDefault();
-    const t = TABS[(next + TABS.length) % TABS.length];
-    setTab(t);
-    tabRefs.current[t]?.focus();
+  const onKeyDown = (event) => {
+    const currentIndex = TABS.indexOf(tab);
+    const nextIndex = {
+      ArrowRight: currentIndex + 1,
+      ArrowLeft: currentIndex - 1,
+      Home: 0,
+      End: TABS.length - 1,
+    }[event.key];
+    if (nextIndex === undefined) return;
+    event.preventDefault();
+    const nextTab = TABS[(nextIndex + TABS.length) % TABS.length];
+    setTab(nextTab);
+    tabRefs.current[nextTab]?.focus();
   };
 
-  return (
-    <div className="club-page" style={{ "--hue": entry?.hue ?? 222 }}>
-      <Navbar />
+  if (loading) {
+    return <><Navbar /><main className="wrap cd-loading" role="status">Loading club details...</main><Footer /></>;
+  }
 
+  if (!club || error) {
+    return (
+      <div className="club-page">
+        <Navbar />
+        <main className="wrap cd-missing" style={{ "--hue": 222 }}>
+          <span className="eyebrow">{error === "Club not found." ? "404" : "Club"}</span>
+          <h1>{error || "Club information is unavailable."}</h1>
+          <Link to={{ pathname: "/", hash: "#clubs" }} className="btn btn--ghost">← Back to all clubs</Link>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const hue = getClubHue(club);
+  const stats = asArray(club.stats).filter((stat) => stat?.label && stat?.value);
+  const liveStats = stats.map((stat) =>
+    stat.label.toLowerCase().includes("member") ? { ...stat, value: club.members ?? 0 } : stat
+  );
+  if (!liveStats.some((stat) => stat.label.toLowerCase().includes("member"))) {
+    liveStats.unshift({ label: "Members", value: club.members ?? 0 });
+  }
+  const visibleStats = liveStats.length ? liveStats : [
+    { label: "Members", value: club.members ?? 0 },
+    { label: "Category", value: club.category || "Not specified" },
+    ...(club.executive ? [{ label: "Executive", value: club.executive }] : []),
+  ];
+
+  return (
+    <div className="club-page" style={{ "--hue": hue }}>
+      <Navbar />
       <header className="cd-hero">
         <div className="cd-hero__glow" aria-hidden="true" />
+        {club.image && <img className="cd-hero__image" src={club.image} alt="" />}
         <div className="wrap">
           <nav className="cd-crumbs" aria-label="Breadcrumb">
             <Link to="/">Home</Link>
             <span aria-hidden="true">/</span>
             <Link to={{ pathname: "/", hash: "#clubs" }}>Clubs</Link>
             <span aria-hidden="true">/</span>
-            <span>{entry?.category ?? "Club"}</span>
+            <span>{club.category || "Club"}</span>
           </nav>
-          <span className="cd-kicker">{entry?.category ?? "Club"} · Official Page</span>
-          <h1 className="cd-title">{club.short}</h1>
+          <span className="cd-kicker">{club.category || "Club"} · Official Page</span>
+          <h1 className="cd-title">{club.short || club.name}</h1>
           <p className="cd-name">{club.name}</p>
-          <p className="cd-tagline">“{club.tagline}”</p>
+          {club.tagline && <p className="cd-tagline">“{club.tagline}”</p>}
           <div className="cd-actions">
             <JoinClub club={club} slug={slug} />
-            <Link to={{ pathname: "/", hash: "#events" }} className="btn btn--ghost btn--lg">Explore Events</Link>
+            <Link to="/events" className="btn btn--ghost btn--lg">Explore Events</Link>
           </div>
           <dl className="cd-stats">
-            {club.stats.map((s) => (
-              <div key={s.label}><dt>{s.label}</dt><dd>{s.value}</dd></div>
+            {visibleStats.map((stat, index) => (
+              <div key={`${stat.label}-${index}`}><dt>{stat.label}</dt><dd>{stat.value}</dd></div>
             ))}
           </dl>
         </div>
@@ -238,42 +429,55 @@ function ClubDetails() {
       <div className="cd-tabbar">
         <div className="wrap">
           <div className="cd-tabs" role="tablist" aria-label="Club sections" onKeyDown={onKeyDown}>
-            {TABS.map((t) => (
+            {TABS.map((item) => (
               <button
-                key={t}
-                ref={(el) => (tabRefs.current[t] = el)}
-                id={`tab-${tabId(t)}`}
+                key={item}
+                ref={(element) => { tabRefs.current[item] = element; }}
+                id={`tab-${tabId(item)}`}
                 role="tab"
                 type="button"
-                aria-selected={t === tab}
-                aria-controls={`panel-${tabId(t)}`}
-                tabIndex={t === tab ? 0 : -1}
-                className={t === tab ? "is-active" : ""}
-                onClick={() => setTab(t)}
+                aria-selected={item === tab}
+                aria-controls={`panel-${tabId(item)}`}
+                tabIndex={item === tab ? 0 : -1}
+                className={item === tab ? "is-active" : ""}
+                onClick={() => setTab(item)}
               >
-                {t}
+                {item}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <main className="wrap cd-body" role="tabpanel" id={`panel-${tabId(tab)}`} aria-labelledby={`tab-${tabId(tab)}`} key={tab}>
-        {tab === "Overview" && <Overview club={club} announcements={announcements} goTo={setTab} />}
-        {tab === "Announcements" && (
-          <div className="ann-list ann-list--wide">
-            {announcements.map((a, i) => <AnnouncementRow key={a.title} item={a} lead={i === 0} />)}
-          </div>
+      <main
+        className="wrap cd-body"
+        role="tabpanel"
+        id={`panel-${tabId(tab)}`}
+        aria-labelledby={`tab-${tabId(tab)}`}
+        key={tab}
+      >
+        {tab === "Overview" && (
+          <Overview club={club} announcements={announcements} announcementError={announcementError} goTo={setTab} />
         )}
-        {tab === "Members" && <Members members={club.members} />}
-        {tab === "Requirements" && <Requirements req={club.requirements} />}
+        {tab === "Announcements" && (
+          announcementError && !announcements.length
+            ? <p role="alert">{announcementError}</p>
+            : announcements.length
+              ? <div className="ann-list ann-list--wide">
+                {announcements.map((item, index) => (
+                  <ClubAnnouncement key={item._id || `${item.title}-${index}`} item={item} lead={index === 0} />
+                ))}
+              </div>
+              : <EmptyState>No announcements have been posted for this club yet.</EmptyState>
+        )}
+        {tab === "Members" && <Members members={approvedMembers.length ? approvedMembers : club.memberProfiles} />}
+        {tab === "Requirements" && <Requirements requirements={club.requirements} />}
         {tab === "Achievements" && <Achievements items={club.achievements} />}
-        {tab === "About" && <About about={club.about} />}
+        {tab === "About" && <About about={club.about} club={club} />}
         {tab === "Benefits" && <Benefits items={club.benefits} />}
         {tab === "Executives" && <Executives items={club.executives} />}
         {tab === "Membership" && <Membership club={club} slug={slug} />}
       </main>
-
       <Footer />
     </div>
   );

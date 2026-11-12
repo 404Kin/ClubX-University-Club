@@ -6,173 +6,202 @@ import {
   FaRobot,
   FaUser,
 } from "react-icons/fa";
-
+import { apiUrl } from "../lib/api";
 import "../styles/chatbot.css";
 
-// ============ AUTO-REPLY DATABASE ============
-const replies = {
-  executive: {
-    greeting: (club) =>
-      `Hi! I'm ${club}'s executive assistant. How can I help you? Ask me about membership, events, or our club activities.`,
-    keywords: {
-      join: "To join our club: 1) Go to the club page, 2) Click 'Apply for Membership', 3) Fill the form. Our executive will review within 24 hours.",
-      membership: "Membership applications are reviewed within 24 hours. You'll receive a notification once approved.",
-      event: "Our upcoming events are listed on the Events page. You can register directly from there.",
-      fee: "Membership is free for all IIUC students. Only event registration fees apply for paid events.",
-      contact: "You can reach us via our Facebook page or email listed on the club profile.",
-      meet: "We meet every Wednesday at 4 PM in the CSE Seminar Hall. All members are welcome!",
-      default:
-        "Thanks for reaching out! Our executive will reply to your message soon. For urgent matters, please contact us via our Facebook page.",
-    },
-  },
-
-  admin: {
-    greeting:
-      "Hello! I'm the ClubX system administrator. How can I help you with your account or the platform?",
-    keywords: {
-      account: "If you're facing login issues, try clearing your browser cache or use 'Forgot Password' on the login page.",
-      login: "Make sure you're using the correct role (Student/Executive/Admin). Each role has separate access.",
-      register: "New student accounts can be created via Sign Up on the login page. Executive/Admin accounts are assigned by the system.",
-      bug: "Thanks for reporting! Please describe the issue with screenshots — we'll investigate and fix it soon.",
-      password: "To reset your password, click 'Forgot Password' on the login page. You'll receive a reset link via email.",
-      data: "All your data is securely stored. We follow strict privacy and security guidelines.",
-      default:
-        "Your message has been received by the admin. We'll get back to you within 24 hours.",
-    },
-  },
-
-  help: {
-    greeting:
-      "Hi! I'm the ClubX Help Center. Ask me anything about clubs, events, membership, or payments.",
-    keywords: {
-      club:
-        "ClubX hosts 4 major clubs: IEEE Student Branch, IIUC Computer Club, IIUCPS, and IIUC Business Club. You can join any of them from the Clubs page.",
-      event:
-        "To register for an event: 1) Go to Events, 2) Click an event, 3) Click 'Register', 4) Fill the form, 5) Get your QR ticket.",
-      payment:
-        "For paid events, you can pay via bKash or Nagad. Send payment to the number shown, then enter the Transaction ID on the registration form.",
-      qr:
-        "After registering for an event, you'll receive a QR ticket. Show it at the venue — the executive will scan it to mark your attendance.",
-      attendance:
-        "Your attendance is tracked by QR code scanning at events. You can view your attendance history on your Student Dashboard.",
-      membership:
-        "To become a member of any club, go to the club's page and click 'Apply for Membership'. The club executive will review your application.",
-      forgot:
-        "If you forgot your password, click 'Forgot Password' on the login page. A reset link will be sent to your email.",
-      default:
-        "I'm not sure about that. Try asking about: clubs, events, membership, payment, QR codes, or attendance. Or switch to Executive/Admin chat for specific help.",
-    },
-  },
+const greeting = {
+  help: "Hi! Send a message to the ClubX Help Center. Sign in as a student to start a saved support conversation.",
+  admin: "Contact the ClubX administrator. Sign in as a student to send a saved support message.",
+  executive: "Choose a club and message its executive team. Sign in as a student to start a conversation.",
 };
 
-// ============ MATCH USER MESSAGE TO REPLY ============
-function getReply(message, mode, clubName) {
-  const text = message.toLowerCase();
-  const set = replies[mode];
-  if (!set) return "Sorry, I didn't understand that.";
-
-  const kw = set.keywords;
-  for (const key of Object.keys(kw)) {
-    if (key === "default") continue;
-    if (text.includes(key)) return kw[key];
-  }
-  return kw.default;
+function messageTime(date) {
+  return date ? new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
 }
 
-// ============ MAIN COMPONENT ============
+function getStoredUser() {
+  try {
+    return JSON.parse(localStorage.getItem("clubx_user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function mapMessages(thread, user) {
+  return (thread?.messages || []).map((message) => ({
+    id: message._id || `${message.senderId}-${message.createdAt}`,
+    from: message.senderRole === "student" && message.senderId === user?.id ? "user" : "bot",
+    name: message.senderName,
+    text: message.text,
+    time: messageTime(message.createdAt),
+  }));
+}
+
 export default function ChatBot() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState("help"); // executive | admin | help
-  const [selectedClub, setSelectedClub] = useState("IEEE Student Branch");
+  const [mode, setMode] = useState("help");
+  const [selectedClub, setSelectedClub] = useState("");
+  const [clubs, setClubs] = useState([]);
+  const [user, setUser] = useState(getStoredUser);
+  const [threads, setThreads] = useState([]);
+  const [activeThread, setActiveThread] = useState(null);
+  const activeThreadRef = useRef(null);
+  const [messages, setMessages] = useState([{ id: "welcome", from: "bot", text: greeting.help }]);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([
-    {
-      from: "bot",
-      text: replies.help.greeting,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    },
-  ]);
-  const [typing, setTyping] = useState(false);
-
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
   const messagesEndRef = useRef(null);
+  const updateActiveThread = (thread) => {
+    activeThreadRef.current = thread;
+    setActiveThread(thread);
+  };
 
-  // Auto scroll to latest message
+  useEffect(() => {
+    fetch(apiUrl("clubs"))
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load clubs for support.");
+        const data = await response.json();
+        if (!Array.isArray(data)) throw new Error("Club API returned invalid data.");
+        setClubs(data);
+        setSelectedClub(data[0]?._id || "");
+      })
+      .catch((loadError) => console.error("Could not load support club list:", loadError));
+  }, []);
+
+  useEffect(() => {
+    if (!open || user?.role !== "student") return;
+    let active = true;
+    const refresh = () => fetch(apiUrl("support"), {
+      headers: { Authorization: `Bearer ${localStorage.getItem("clubx_token") || ""}` },
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || "Could not load your support conversations.");
+        if (!Array.isArray(data)) throw new Error("Support API returned invalid data.");
+        if (!active) return;
+        setThreads(data);
+        const selectedThread = activeThreadRef.current;
+        const currentThread = data.find((thread) => thread._id === selectedThread?._id);
+        if (currentThread) {
+          activeThreadRef.current = currentThread;
+          setActiveThread(currentThread);
+          if (currentThread.updatedAt !== selectedThread.updatedAt) {
+            setMessages(mapMessages(currentThread, user));
+          }
+        } else {
+          const recipient = mode === "executive" ? "executive" : "admin";
+          const existing = data.find((thread) =>
+            thread.recipient === recipient &&
+            (recipient !== "executive" || thread.clubId === selectedClub)
+          );
+          if (existing && !selectedThread) {
+            activeThreadRef.current = existing;
+            setActiveThread(existing);
+            setMessages(mapMessages(existing, user));
+          }
+        }
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message);
+      });
+    refresh();
+    const intervalId = window.setInterval(refresh, 5000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [open, user, mode, selectedClub]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing]);
+  }, [messages, sending]);
 
-  // Change mode → reset messages
-  const handleModeChange = (newMode) => {
-    setMode(newMode);
-    const greeting =
-      newMode === "executive"
-        ? replies.executive.greeting(selectedClub)
-        : replies[newMode].greeting;
-
-    setMessages([
-      {
-        from: "bot",
-        text: greeting,
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      },
-    ]);
+  const handleModeChange = (nextMode) => {
+    setMode(nextMode);
+    updateActiveThread(null);
+    setMessages([{ id: "welcome", from: "bot", text: greeting[nextMode] }]);
+    setError("");
+    const recipient = nextMode === "executive" ? "executive" : "admin";
+    const existing = threads.find((thread) =>
+      thread.recipient === recipient &&
+      (recipient !== "executive" || thread.clubId === selectedClub)
+    );
+    if (existing) {
+      updateActiveThread(existing);
+      setMessages(mapMessages(existing, user));
+    }
   };
 
-  const handleClubChange = (club) => {
-    setSelectedClub(club);
-    setMessages([
-      {
-        from: "bot",
-        text: replies.executive.greeting(club),
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      },
-    ]);
+  const handleClubChange = (clubId) => {
+    setSelectedClub(clubId);
+    updateActiveThread(null);
+    setMessages([{ id: "welcome", from: "bot", text: greeting.executive }]);
+    const existing = threads.find((thread) => thread.recipient === "executive" && thread.clubId === clubId);
+    if (existing) {
+      updateActiveThread(existing);
+      setMessages(mapMessages(existing, user));
+    }
   };
 
-  const sendMessage = () => {
+  const selectThread = (threadId) => {
+    const thread = threads.find((item) => item._id === threadId);
+    if (!thread) return;
+    updateActiveThread(thread);
+    setMode(thread.recipient === "executive" ? "executive" : "help");
+    if (thread.clubId) setSelectedClub(thread.clubId);
+    setMessages(mapMessages(thread, user));
+  };
+
+  const sendMessage = async () => {
     const text = input.trim();
-    if (!text) return;
-
-    const time = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    // Add user message
-    setMessages((prev) => [...prev, { from: "user", text, time }]);
-    setInput("");
-    setTyping(true);
-
-    // Simulate bot typing delay
-    setTimeout(() => {
-      const replyText = getReply(text, mode, selectedClub);
-      setMessages((prev) => [
-        ...prev,
+    if (!text || sending) return;
+    const currentUser = getStoredUser();
+    setUser(currentUser);
+    if (!currentUser || currentUser.role !== "student") {
+      setError("Please sign in with a student account to send a support message.");
+      return;
+    }
+    if (mode === "executive" && !selectedClub) {
+      setError("Choose a club before contacting its executives.");
+      return;
+    }
+    setSending(true);
+    setError("");
+    try {
+      const isNewThread = !activeThread;
+      const response = await fetch(
+        apiUrl(isNewThread ? "support" : `support/${activeThread._id}/messages`),
         {
-          from: "bot",
-          text: replyText,
-          time: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("clubx_token") || ""}`,
+          },
+          body: JSON.stringify(isNewThread
+            ? {
+              text,
+              recipient: mode === "executive" ? "executive" : "admin",
+              clubId: mode === "executive" ? selectedClub : undefined,
+            }
+            : { text }),
         },
-      ]);
-      setTyping(false);
-    }, 800 + Math.random() * 600);
+      );
+      const thread = await response.json();
+      if (!response.ok) throw new Error(thread.message || "Could not send your message.");
+      updateActiveThread(thread);
+      setThreads((current) => [thread, ...current.filter((item) => item._id !== thread._id)]);
+      setMessages(mapMessages(thread, currentUser));
+      setInput("");
+    } catch (sendError) {
+      setError(sendError.message);
+    } finally {
+      setSending(false);
+    }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       sendMessage();
     }
   };
@@ -180,119 +209,79 @@ export default function ChatBot() {
   return (
     <>
       {!open && (
-  <button
-    className="chat-fab"
-    onClick={() => setOpen(true)}
-    aria-label="Open chat"
-  >
-    <FaHeadset />    
-    
-  </button>
-)}
-
-      {/* Chat window */}
+        <button className="chat-fab" onClick={() => { setUser(getStoredUser()); setOpen(true); }} aria-label="Open chat">
+          <FaHeadset />
+        </button>
+      )}
       {open && (
         <div className="chat-window">
-          {/* Header */}
           <div className="chat-head">
             <div className="chat-head__left">
-              <div className="chat-head__avatar">
-                <FaRobot />
-              </div>
-              <div>
-                <strong>ClubX Support</strong>
-                <small>● Online</small>
-              </div>
+              <div className="chat-head__avatar"><FaRobot /></div>
+              <div><strong>ClubX Support</strong><small>Support conversations are saved</small></div>
             </div>
-            <button
-              className="chat-head__close"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-            >
-              <FaTimes />
-            </button>
+            <button className="chat-head__close" onClick={() => setOpen(false)} aria-label="Close"><FaTimes /></button>
           </div>
-
-          {/* Mode tabs */}
           <div className="chat-tabs">
             {[
               { value: "help", label: "Help Center" },
               { value: "executive", label: "Executive" },
               { value: "admin", label: "Admin" },
-            ].map((t) => (
+            ].map((tab) => (
               <button
-                key={t.value}
-                className={`chat-tab ${mode === t.value ? "is-active" : ""}`}
-                onClick={() => handleModeChange(t.value)}
+                key={tab.value}
+                className={`chat-tab ${mode === tab.value ? "is-active" : ""}`}
+                onClick={() => handleModeChange(tab.value)}
               >
-                {t.label}
+                {tab.label}
               </button>
             ))}
           </div>
-
-          {/* Club selector (only in executive mode) */}
           {mode === "executive" && (
             <div className="chat-club-select">
-              <select
-                value={selectedClub}
-                onChange={(e) => handleClubChange(e.target.value)}
-              >
-                <option>IEEE Student Branch</option>
-                <option>IIUC Computer Club</option>
-                <option>IIUCPS</option>
-                <option>IIUC Business Club</option>
+              <select value={selectedClub} onChange={(event) => handleClubChange(event.target.value)}>
+                <option value="">Select a club</option>
+                {clubs.map((club) => <option key={club._id} value={club._id}>{club.name}</option>)}
               </select>
             </div>
           )}
-
-          {/* Messages */}
+          {threads.length > 0 && user?.role === "student" && (
+            <div className="chat-club-select">
+              <select value={activeThread?._id || ""} onChange={(event) => selectThread(event.target.value)}>
+                <option value="">Start a new conversation</option>
+                {threads.map((thread) => (
+                  <option key={thread._id} value={thread._id}>
+                    {thread.recipient === "executive" ? thread.clubName : "Help Center"}: {thread.subject}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="chat-body">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`chat-msg ${m.from === "user" ? "from-user" : "from-bot"}`}
-              >
-                <div className="chat-msg__icon">
-                  {m.from === "bot" ? <FaRobot /> : <FaUser />}
-                </div>
+            {messages.map((message) => (
+              <div key={message.id} className={`chat-msg ${message.from === "user" ? "from-user" : "from-bot"}`}>
+                <div className="chat-msg__icon">{message.from === "user" ? <FaUser /> : <FaRobot />}</div>
                 <div className="chat-msg__bubble">
-                  <p>{m.text}</p>
-                  <span className="chat-msg__time">{m.time}</span>
+                  {message.name && <strong>{message.name}</strong>}
+                  <p>{message.text}</p>
+                  {message.time && <span className="chat-msg__time">{message.time}</span>}
                 </div>
               </div>
             ))}
-
-            {typing && (
-              <div className="chat-msg from-bot">
-                <div className="chat-msg__icon">
-                  <FaRobot />
-                </div>
-                <div className="chat-msg__bubble chat-typing">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-              </div>
-            )}
-
+            {sending && <p role="status">Sending...</p>}
             <div ref={messagesEndRef} />
           </div>
-
-          {/* Input */}
+          {error && <p className="chat-error" role="alert">{error}</p>}
           <div className="chat-input">
             <textarea
               rows={1}
               placeholder="Type your message..."
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              maxLength={2000}
+              onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <button
-              className="chat-send"
-              onClick={sendMessage}
-              disabled={!input.trim()}
-              aria-label="Send"
-            >
+            <button className="chat-send" onClick={sendMessage} disabled={!input.trim() || sending} aria-label="Send">
               <FaPaperPlane />
             </button>
           </div>

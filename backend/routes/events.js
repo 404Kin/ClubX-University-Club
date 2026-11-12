@@ -1,19 +1,42 @@
 const express = require('express');
 const Event = require('../models/Event');
+const Club = require('../models/Club');
+const { authenticate, requireRole } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
-    const events = await Event.find().sort({ createdAt: -1 });
+    const filter = req.query.clubId
+      ? {
+        $or: [
+          { clubId: req.query.clubId },
+          { createdBy: req.query.createdBy },
+        ],
+      }
+      : {};
+    const query = Event.find(filter).sort({ createdAt: -1 });
+    if (req.query.activity === 'true') {
+      query.select('title date venue category clubName createdAt');
+    }
+    const events = await query.lean();
     res.json(events);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', authenticate, requireRole('executive'), async (req, res) => {
   try {
-    const newEvent = await Event.create(req.body);
+    const club = req.auth.clubId
+      ? await Club.findById(req.auth.clubId)
+      : await Club.findOne({ name: req.auth.club });
+    if (!club) return res.status(404).json({ message: 'Your assigned club was not found.' });
+    const newEvent = await Event.create({
+      ...req.body,
+      createdBy: req.auth.id,
+      clubId: club._id.toString(),
+      clubName: club.name,
+    });
     res.status(201).json(newEvent);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { res.status(400).json({ message: err.message }); }
 });
 
 router.delete('/:id', async (req, res) => {

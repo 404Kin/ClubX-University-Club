@@ -1,0 +1,13 @@
+.support-inbox__layout { display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.5fr); gap: 1rem; }
+.support-inbox__list { display: grid; align-content: start; gap: .5rem; }
+.support-inbox__list button { display: grid; gap: .25rem; text-align: left; padding: .8rem; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.support-inbox__list button.is-selected { border-color: var(--accent); }
+.support-inbox__list small { color: var(--muted); overflow-wrap: anywhere; }
+.support-inbox__conversation { min-width: 0; }
+.support-inbox__messages { max-height: 360px; overflow: auto; display: grid; align-content: start; gap: .65rem; padding: .8rem; background: var(--bg-2); border-radius: 10px; }
+.support-inbox__messages article { padding: .7rem; background: var(--surface); border-radius: 8px; overflow-wrap: anywhere; }
+.support-inbox__messages article strong { font-size: .82rem; }
+.support-inbox__messages article p { margin: .35rem 0 0; white-space: pre-wrap; }
+.support-inbox__conversation form { display: grid; gap: .6rem; margin-top: .75rem; }
+.support-inbox__conversation textarea { min-height: 72px; padding: .7rem; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; font: inherit; }
+@media (max-width: 650px) { .support-inbox__layout { grid-template-columns: 1fr; } }

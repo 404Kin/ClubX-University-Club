@@ -5,6 +5,8 @@ const announcementSchema = new mongoose.Schema({
   body: { type: String, required: true },
   priority: { type: String, default: 'normal' },
   audience: { type: String, default: 'all' },
+  clubId: { type: String, default: null, index: true },
+  clubName: { type: String, default: null },
   createdBy: { type: String, required: true }, 
 }, { timestamps: true });
 

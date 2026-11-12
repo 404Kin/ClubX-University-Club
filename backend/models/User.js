@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   role: { 
     type: String, 
@@ -10,7 +10,10 @@ const userSchema = new mongoose.Schema({
     default: 'student' 
   },
   
-  clubId: { type: String, default: null }, 
+  clubId: { type: String, default: null },
+  club: { type: String, default: null },
+  position: { type: String, default: null },
+  department: { type: String, default: null },
   studentId: { type: String, default: null },
 }, { timestamps: true });
 

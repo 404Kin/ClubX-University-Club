@@ -1,20 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import StatusBadge from "../components/StatusBadge";
 import { Arrow, Check } from "../components/Icons";
-import clubs from "../data/clubs";
-import directory from "../data/directory";
-import { addApplication } from "../data/memberships";
+import { apiUrl } from "../lib/api";
 import "../styles/club.css";
 import "../styles/join.css";
-
-const METHODS = [
-  { id: "bkash", label: "bKash" },
-  { id: "nagad", label: "Nagad" },
-  { id: "rocket", label: "Rocket" },
-];
 
 const EMPTY_FORM = {
   fullName: "",
@@ -24,216 +16,215 @@ const EMPTY_FORM = {
   department: "",
   semester: "",
   batch: "",
-  address: "",
+  paymentMethod: "",
+  txnId: "",
 };
-
-function RegistrationForm({ form, onChange, onNext }) {
-  const required = ["fullName", "studentId", "email", "phone", "department", "semester", "batch"];
-  const canContinue = required.every((k) => form[k].trim() !== "");
-
-  return (
-    <form
-      className="jn-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (canContinue) onNext();
-      }}
-    >
-      <div className="jn-grid">
-        <div className="field">
-          <label htmlFor="fullName">Full name *</label>
-          <input id="fullName" required value={form.fullName} onChange={onChange("fullName")} placeholder="Your full name" />
-        </div>
-        <div className="field">
-          <label htmlFor="studentId">Student ID *</label>
-          <input id="studentId" required value={form.studentId} onChange={onChange("studentId")} placeholder="e.g. C221xxx" />
-        </div>
-        <div className="field">
-          <label htmlFor="email">Email *</label>
-          <input id="email" type="email" required value={form.email} onChange={onChange("email")} placeholder="you@example.com" />
-        </div>
-        <div className="field">
-          <label htmlFor="phone">Phone number *</label>
-          <input id="phone" required value={form.phone} onChange={onChange("phone")} placeholder="01XXXXXXXXX" />
-        </div>
-        <div className="field">
-          <label htmlFor="department">Department *</label>
-          <input id="department" required value={form.department} onChange={onChange("department")} placeholder="e.g. CSE" />
-        </div>
-        <div className="field">
-          <label htmlFor="semester">Semester / Year *</label>
-          <input id="semester" required value={form.semester} onChange={onChange("semester")} placeholder="e.g. 6th" />
-        </div>
-        <div className="field">
-          <label htmlFor="batch">Batch *</label>
-          <input id="batch" required value={form.batch} onChange={onChange("batch")} placeholder="e.g. 48" />
-        </div>
-        <div className="field jn-span-2">
-          <label htmlFor="address">Address / other info (optional)</label>
-          <input id="address" value={form.address} onChange={onChange("address")} placeholder="Optional" />
-        </div>
-      </div>
-      <button type="submit" className="btn btn--primary btn--lg" disabled={!canContinue}>
-        Continue to Payment <Arrow />
-      </button>
-    </form>
-  );
-}
-
-function PaymentStep({ club, method, setMethod, txnId, setTxnId, onBack, onSubmit }) {
-  const canSubmit = Boolean(method) && txnId.trim() !== "";
-
-  return (
-    <div className="jn-payment">
-      <p className="cd-lead jn-lead">
-        Membership fee: <strong>৳{club.membership.fee}</strong>
-      </p>
-
-      <div className="jn-methods" role="group" aria-label="Payment method">
-        {METHODS.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            className={`jn-method ${method === m.id ? "is-active" : ""}`}
-            onClick={() => setMethod(m.id)}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {method && (
-        <div className="jn-instructions">
-          <div className="cd-info">
-            <div>
-              <dt>Payment number</dt>
-              <dd>{club.membership.paymentMethods[method]}</dd>
-            </div>
-            <div>
-              <dt>Membership fee</dt>
-              <dd>৳{club.membership.fee}</dd>
-            </div>
-          </div>
-          <p className="jn-note">
-            Send the exact membership fee to the {METHODS.find((m) => m.id === method)?.label} number above,
-            then enter your Transaction ID below.
-          </p>
-
-          <div className="field">
-            <label htmlFor="txnId">Transaction ID *</label>
-            <input
-              id="txnId"
-              required
-              value={txnId}
-              onChange={(e) => setTxnId(e.target.value)}
-              placeholder="e.g. TRX123456789"
-            />
-          </div>
-          <p className="jn-disclaimer">
-            Entering a Transaction ID does not automatically confirm payment. Your club administrator will
-            manually verify it before your membership is approved.
-          </p>
-        </div>
-      )}
-
-      <div className="jn-actions">
-        <button type="button" className="btn btn--ghost" onClick={onBack}>Back</button>
-        <button type="button" className="btn btn--primary btn--lg" disabled={!canSubmit} onClick={onSubmit}>
-          Submit Registration <Arrow />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SuccessStep({ club, application }) {
-  return (
-    <div className="jn-success">
-      <Check />
-      <h2>Application submitted</h2>
-      <p>
-        Your membership application for {club.short} has been submitted. Your payment will be verified by the
-        club administrator before your membership is approved.
-      </p>
-      <StatusBadge status={application.status} />
-      <dl className="cd-info jn-summary">
-        <div><dt>Reference</dt><dd>{application.id}</dd></div>
-        <div><dt>Payment method</dt><dd>{METHODS.find((m) => m.id === application.paymentMethod)?.label}</dd></div>
-        <div><dt>Transaction ID</dt><dd>{application.txnId}</dd></div>
-      </dl>
-      <Link to={`/clubs/${application.clubSlug}`} className="btn btn--ghost">Back to club page</Link>
-    </div>
-  );
-}
 
 function ClubJoin() {
   const { slug } = useParams();
-  const club = clubs[slug];
-  const entry = directory.find((c) => c.slug === slug);
-  const [step, setStep] = useState("form");
+  const [club, setClub] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [method, setMethod] = useState(null);
-  const [txnId, setTxnId] = useState("");
   const [application, setApplication] = useState(null);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState(1);
+
+  useEffect(() => {
+    let active = true;
+    const fetchClub = async () => {
+      try {
+        const response = await fetch(apiUrl(`clubs/${slug}`));
+        if (!response.ok) {
+          throw new Error(response.status === 404 ? "Club not found." : "Could not load club details.");
+        }
+        const clubData = await response.json();
+        if (active) setClub(clubData);
+      } catch (fetchError) {
+        if (active) setError(fetchError.message || "Could not load club details.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchClub();
+    return () => { active = false; };
+  }, [slug]);
+
+  const onChange = (event) => {
+    const { name, value } = event.target;
+    setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    if (submitting || !club) return;
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const response = await fetch(apiUrl("memberships"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentName: form.fullName.trim(),
+          studentId: form.studentId.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          department: form.department.trim(),
+          semester: form.semester.trim(),
+          batch: form.batch.trim(),
+          paymentMethod: form.paymentMethod,
+          clubId: club._id,
+          clubName: club.name,
+          txnId: form.txnId.trim() || undefined,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || result.error || "Failed to submit your application.");
+      }
+      setApplication(result);
+    } catch (submitError) {
+      console.error("Membership application failed:", submitError);
+      setError(submitError.message || "Could not submit your application. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const membershipFee = Number(club?.membership?.fee);
+  const hasMembershipFee = Number.isFinite(membershipFee) && membershipFee > 0;
+  const goToPayment = (event) => {
+    event.preventDefault();
+    if (!event.currentTarget.form.reportValidity()) return;
+    setError("");
+    setStep(2);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  if (loading) {
+    return <><Navbar /><main className="wrap cd-loading" role="status">Loading club details...</main><Footer /></>;
+  }
 
   if (!club) {
     return (
       <div className="club-page">
         <Navbar />
         <main className="wrap cd-missing">
-          <h1>Club not found</h1>
-          <p>This club doesn't have a registration page yet.</p>
-          <Link to="/" className="btn btn--ghost">← Back to home</Link>
+          <h1>{error || "Club not found."}</h1>
+          <Link to="/" className="btn btn--ghost">Back to clubs</Link>
         </main>
         <Footer />
       </div>
     );
   }
 
-  const onChange = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const submit = () => {
-    const record = addApplication({
-      clubSlug: slug,
-      clubName: club.short,
-      ...form,
-      paymentMethod: method,
-      txnId: txnId.trim(),
-    });
-    setApplication(record);
-    setStep("success");
-  };
-
   return (
-    <div className="club-page" style={{ "--hue": entry?.hue ?? 222 }}>
+    <div className="club-page">
       <Navbar />
       <header className="cd-hero jn-hero">
         <div className="wrap">
-          <nav className="cd-crumbs" aria-label="Breadcrumb">
-            <Link to="/">Home</Link>
-            <span aria-hidden="true">/</span>
-            <Link to={`/clubs/${slug}`}>{club.short}</Link>
-            <span aria-hidden="true">/</span>
-            <span>Join</span>
-          </nav>
           <h1 className="jn-title">Become a Member</h1>
           <p className="cd-tagline">Join {club.name}</p>
         </div>
       </header>
+
       <main className="wrap cd-body jn-body">
-        {step === "form" && <RegistrationForm form={form} onChange={onChange} onNext={() => setStep("payment")} />}
-        {step === "payment" && (
-          <PaymentStep
-            club={club}
-            method={method}
-            setMethod={setMethod}
-            txnId={txnId}
-            setTxnId={setTxnId}
-            onBack={() => setStep("form")}
-            onSubmit={submit}
-          />
+        {application ? (
+          <div className="jn-success">
+            <Check size={40} />
+            <h2>Application submitted</h2>
+            <p>Your application for {club.name} is pending review.</p>
+            <StatusBadge status={application.status} />
+            <Link to={`/clubs/${slug}`} className="btn btn--ghost">Back to club page</Link>
+          </div>
+        ) : (
+          <form className="jn-form" onSubmit={submit}>
+            <p className="jn-lead">
+              Step {step} of 2 · {step === 1 ? "Your information" : "Membership payment"}
+            </p>
+
+            {step === 1 ? <div className="jn-grid">
+              <div className="field">
+                <label htmlFor="join-full-name">Full name *</label>
+                <input id="join-full-name" name="fullName" autoComplete="name" required value={form.fullName} onChange={onChange} placeholder="Your full name" />
+              </div>
+              <div className="field">
+                <label htmlFor="join-student-id">Student ID *</label>
+                <input id="join-student-id" name="studentId" required value={form.studentId} onChange={onChange} placeholder="C241462" />
+              </div>
+              <div className="field">
+                <label htmlFor="join-email">Email *</label>
+                <input id="join-email" name="email" type="email" autoComplete="email" required value={form.email} onChange={onChange} placeholder="you@example.com" />
+              </div>
+              <div className="field">
+                <label htmlFor="join-phone">Phone *</label>
+                <input id="join-phone" name="phone" type="tel" autoComplete="tel" required value={form.phone} onChange={onChange} placeholder="01XXXXXXXXX" />
+              </div>
+              <div className="field">
+                <label htmlFor="join-department">Department</label>
+                <input id="join-department" name="department" value={form.department} onChange={onChange} placeholder="CSE" />
+              </div>
+              <div className="field">
+                <label htmlFor="join-semester">Semester</label>
+                <input id="join-semester" name="semester" value={form.semester} onChange={onChange} placeholder="6th" />
+              </div>
+              <div className="field">
+                <label htmlFor="join-batch">Batch</label>
+                <input id="join-batch" name="batch" value={form.batch} onChange={onChange} placeholder="2024" />
+              </div>
+            </div> : (
+              <section className="jn-payment" aria-labelledby="join-payment-title">
+                <h2 id="join-payment-title">Membership fee</h2>
+                <p className="jn-fee">
+                  {hasMembershipFee ? `৳${membershipFee.toLocaleString()}${club.membership.period ? ` / ${club.membership.period}` : ""}` : "Free"}
+                </p>
+                {hasMembershipFee ? (
+                  <>
+                    <p className="jn-note">Confirm the club’s payment account with its executive before sending money.</p>
+                    <div className="jn-grid">
+                      <div className="field">
+                        <label htmlFor="join-payment-method">Payment method</label>
+                        <select id="join-payment-method" name="paymentMethod" value={form.paymentMethod} onChange={onChange}>
+                          <option value="">Select a method (optional)</option>
+                          <option value="bkash">bKash</option>
+                          <option value="nagad">Nagad</option>
+                          <option value="bank">Bank transfer</option>
+                          <option value="cash">Cash</option>
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label htmlFor="join-txn-id">Transaction ID (optional)</label>
+                        <input id="join-txn-id" name="txnId" value={form.txnId} onChange={onChange} placeholder="Enter after payment" />
+                      </div>
+                    </div>
+                  </>
+                ) : <p className="jn-note">No payment is needed to apply for this club.</p>}
+              </section>
+            )}
+
+            {error && <p className="jn-error" role="alert">{error}</p>}
+
+            <div className="jn-submit">
+              {step === 2 && (
+                <button type="button" className="btn btn--ghost btn--lg" onClick={() => setStep(1)}>
+                  Back
+                </button>
+              )}
+              {step === 1 ? (
+                <button type="button" className="btn btn--primary btn--lg" onClick={goToPayment}>
+                  Continue to Payment <Arrow />
+                </button>
+              ) : (
+                <button type="submit" className="btn btn--primary btn--lg" disabled={submitting}>
+                  {submitting ? "Submitting application..." : "Submit Application"}
+                  {!submitting && <Arrow />}
+                </button>
+              )}
+            </div>
+          </form>
         )}
-        {step === "success" && <SuccessStep club={club} application={application} />}
       </main>
       <Footer />
     </div>

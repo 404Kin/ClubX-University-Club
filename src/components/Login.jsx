@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
+import { apiUrl } from "../lib/api";
 
 function Login() {
   const [isLogin, setIsLogin] = useState(true);
@@ -33,7 +34,7 @@ function Login() {
           return;
         }
 
-        const response = await fetch("http://localhost:5000/api/auth/login", {
+        const response = await fetch(apiUrl("auth/login"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password })
@@ -83,7 +84,7 @@ function Login() {
         return;
       }
 
-      const response = await fetch("http://localhost:5000/api/auth/register", {
+      const response = await fetch(apiUrl("auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, role: "student" })
@@ -97,7 +98,7 @@ function Login() {
         return;
       }
 
-      const loginResponse = await fetch("http://localhost:5000/api/auth/login", {
+      const loginResponse = await fetch(apiUrl("auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })

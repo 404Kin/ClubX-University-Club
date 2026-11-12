@@ -9,7 +9,11 @@ const eventSchema = new mongoose.Schema({
   description: { type: String },
   total: { type: Number, default: 50 },
   registered: { type: Number, default: 0 },
+  isPaid: { type: Boolean, default: false },
+  price: { type: Number, min: 0, default: 0 },
   createdBy: { type: String, required: true }, 
+  clubId: { type: String, default: null },
+  clubName: { type: String, default: null },
   src: { type: String, default: "" },
 }, { timestamps: true });
 

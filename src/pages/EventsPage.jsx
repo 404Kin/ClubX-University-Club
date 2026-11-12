@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import EventCard from "../components/EventCard";
 import Navbar from "../components/Navbar";  
 import Footer from "../components/Footer";   
+import { apiUrl } from "../lib/api";
 import "../styles/events.css";
 
 function EventsPage() {
@@ -11,7 +12,7 @@ function EventsPage() {
   useEffect(() => {
     const loadEvents = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/events");
+        const response = await fetch(apiUrl("events"));
         const data = await response.json();
         setEvents(data);
       } catch (error) {

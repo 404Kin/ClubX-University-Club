@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { SearchIcon, MenuIcon } from "./Icons";
 import {
-  FaUser,
   FaSignOutAlt,
   FaTachometerAlt,
   FaChevronDown,
@@ -11,7 +10,7 @@ import {
 const LINKS = [
   { id: "clubs", label: "Clubs", type: "section" },
   { id: "events", label: "Events", type: "page", path: "/events" },
-  { id: "announcements", label: "Announcements", type: "section" },
+  { id: "announcements", label: "Announcements", type: "page", path: "/announcements" },
 ];
 
 function Navbar() {
@@ -22,20 +21,14 @@ function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState("");
-  const [user, setUser] = useState(null);
+  const storedUser = localStorage.getItem("clubx_user");
+  let user = null;
+  try {
+    user = storedUser ? JSON.parse(storedUser) : null;
+  } catch {
+    user = null;
+  }
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  // Load logged-in user
-  useEffect(() => {
-    const stored = localStorage.getItem("clubx_user");
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored));
-      } catch {
-        setUser(null);
-      }
-    }
-  }, [pathname]); // re-check on every route change
 
   // Smooth scroll to section on home
   useEffect(() => {
@@ -89,13 +82,14 @@ function Navbar() {
     ? "clubs"
     : pathname === "/events"
     ? "events"
+    : pathname.startsWith("/announcements")
+    ? "announcements"
     : "";
 
   const close = () => setOpen(false);
 
   const handleLogout = () => {
     localStorage.removeItem("clubx_user");
-    setUser(null);
     setUserMenuOpen(false);
     close();
     navigate("/login");
